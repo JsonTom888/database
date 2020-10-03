@@ -25,10 +25,10 @@ public class SpringbootElasticsearchApplicationTests {
 
     @Test
     public void saveCustomers() {
-        repository.save(new Customer("Alice", "北北京",13));
-        repository.save(new Customer("Bob", "北北京",23));
-        repository.save(new Customer("neo", "⻄西安",30));
-        repository.save(new Customer("summer", "烟台",22));
+        repository.save(new Customer("Alice", "北北京", 13));
+        repository.save(new Customer("Bob", "北北京", 23));
+        repository.save(new Customer("neo", "⻄西安", 30));
+        repository.save(new Customer("summer", "烟台", 22));
     }
 
     @Test
@@ -42,7 +42,7 @@ public class SpringbootElasticsearchApplicationTests {
 
     @Test
     public void updateCustomers() {
-        List<Customer> customers =  repository.findByUserName("summer");
+        List<Customer> customers = repository.findByUserName("summer");
         System.out.println(customers);
         Customer customer = customers.get(0);
         customer.setAddress("北北京市海海淀区⻄西直⻔门");
@@ -60,20 +60,37 @@ public class SpringbootElasticsearchApplicationTests {
 
     @Test
     public void fetchPageCustomers() {
-        Sort.Order order=new Sort.Order(Sort.Direction.DESC, "address.keyword");
-        Pageable pageable = PageRequest.of(0,10,Sort.by(order));
+        Sort.Order order = new Sort.Order(Sort.Direction.DESC, "address.keyword");
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(order));
 //        Sort sort = new Sort(Sort.Direction.DESC, "address.keyword");
 //        Pageable pageable = PageRequest.of(0, 10, sort);
-        Page<Customer> customers=repository.findByAddress("北北京", pageable);
-        System.out.println("Page customers "+customers.getContent().toString());
+        Page<Customer> customers = repository.findByAddress("北北京", pageable);
+        System.out.println("Page customers " + customers.getContent().toString());
     }
 
     @Test
     public void fetchPage2Customers() {
+//        QueryBuilder customerQuery = QueryBuilders.boolQuery()
+//                .must(QueryBuilders.matchQuery("address", "北北京"));
+//        QueryBuilder customerQuery = QueryBuilders.boolQuery()
+//                .should(QueryBuilders.multiMatchQuery("北京", "address", "userName"))
+//                .should(QueryBuilders.matchQuery("userName","summer"));
         QueryBuilder customerQuery = QueryBuilders.boolQuery()
-                .must(QueryBuilders.matchQuery("address", "北北京"));
+                .mustNot(QueryBuilders.matchQuery("userName","Bob"))
+                .should(QueryBuilders.multiMatchQuery("北京", "address", "userName"));
+        QueryBuilder queryBuilder= QueryBuilders.multiMatchQuery("fieldlValue", "fieldName 1", "fieldName2", "fieldName3");
         Page<Customer> page = repository.search(customerQuery, PageRequest.of(0, 10));
-        System.out.println("Page customers "+page.getContent().toString());
+        for (Customer customer:page){
+            System.out.println(customer.toString());
+        }
+//        System.out.println("Page customers " + page.getContent().toString());
     }
+
+    @Test
+    public void deleteCustomers() {
+        repository.deleteAll();
+        repository.deleteByUserName("neo");
+    }
+
 
 }
