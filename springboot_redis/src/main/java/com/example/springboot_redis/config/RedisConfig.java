@@ -1,10 +1,7 @@
 package com.example.springboot_redis.config;
 
 import org.springframework.cache.annotation.CachingConfigurerSupport;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.KeyGenerator;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 import java.lang.reflect.Method;
 
@@ -14,11 +11,11 @@ import java.lang.reflect.Method;
  * @version V1.0
  * @date 2020/10/27 21:40
  */
-@Configuration
-@EnableCaching//此注解开启缓存
+//@Configuration
+//@EnableCaching//此注解开启缓存
 public class RedisConfig extends CachingConfigurerSupport {
 
-    @Bean
+//    @Bean
     public KeyGenerator keyGenerator(){
         return new KeyGenerator() {
             @Override

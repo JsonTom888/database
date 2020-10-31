@@ -1,15 +1,25 @@
 package com.example.springboot_redis;
 
+import com.example.springboot_redis.common.SpringUtils;
 import com.example.springboot_redis.pojo.User;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.geo.Circle;
+import org.springframework.data.geo.Distance;
+import org.springframework.data.geo.Metrics;
+import org.springframework.data.geo.Point;
+import org.springframework.data.redis.connection.RedisGeoCommands;
+import org.springframework.data.redis.core.GeoOperations;
 import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.HyperLogLogOperations;
 import org.springframework.data.redis.core.ListOperations;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SetOperations;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -145,6 +155,89 @@ class SpringbootRedisApplicationTests {
         for (String v:zsetB){
             System.out.println("zsetB value :"+v);
         }
+    }
+
+    @Test
+    public void testBitMaps(){//位图使用
+        //此处必须使用StringRedisTemplate，否则bitcount功能失效
+        StringRedisTemplate stringRedisTemplate = SpringUtils.getBean(StringRedisTemplate.class);
+        String key = "sign";
+        ValueOperations operations = stringRedisTemplate.opsForValue();
+        stringRedisTemplate.delete(key);
+        System.out.println("key是否存在："+stringRedisTemplate.hasKey(key));
+        operations.setBit(key,0,true);//设置新值返回旧值
+        operations.setBit(key,1,true);
+        operations.setBit(key,2,false);
+        operations.setBit(key,3,true);
+        operations.setBit(key,4,true);
+        operations.setBit(key,5,false);
+        operations.setBit(key,6,false);
+
+        System.out.println(operations.getBit(key,4));//获取key对应的第5个位的值
+        System.out.println(operations.getBit(key,6));//获取key对应的第7个位的值
+        System.out.println(operations.getBit(key,7));//获取key对应的第8个位的值，如果不存在则返回false
+
+        System.out.println(operations.getBit(key,3));//获取key对应的第4个位的值
+        //统计key中value为true的数量
+        long count = (long)stringRedisTemplate.execute((RedisCallback<Long>) con -> con.bitCount(key.getBytes()));
+        System.out.println(count);
+        //统计key中指定范围[start*8,end*8]内所有value=1的数量
+        count = (long)stringRedisTemplate.execute((RedisCallback<Long>) con -> con.bitCount(key.getBytes(),1,5));
+        System.out.println(count);
+
+    }
+
+
+
+    @Test
+    public void testGeoSpatial(){//reids 3.2版本之后支持
+        String citys = "citys";
+        String chengdu = "chengdu";
+        String beijing = "beijing";
+        String chongqing = "beijing";
+        String luzhou = "beijing";
+        GeoOperations<String, String> geoOperations = redisTemplate.opsForGeo();
+        geoOperations.add(citys,new RedisGeoCommands.GeoLocation<String>(chengdu,new Point(104,30)));
+        geoOperations.add(citys,new Point(116,40),beijing);
+        geoOperations.add(citys,new Point(106,29),chongqing);
+        geoOperations.add(citys,new Point(105,25),luzhou);
+
+        System.out.println(geoOperations.position(citys, "chengdu"));//获取成都经纬度
+        System.out.println(geoOperations.distance(citys, chengdu, beijing));//获取两地距离
+
+        Point center = new Point(104,30);//定义中心点
+        Distance radius = new Distance(800, Metrics.KILOMETERS);//定义范围
+        Circle within = new Circle(center, radius);
+        //返回范围内的城市
+        System.out.println(geoOperations.radius(citys, within));
+        //根据距离排序,返回最近的两个
+        RedisGeoCommands.GeoRadiusCommandArgs args = RedisGeoCommands.GeoRadiusCommandArgs.
+                newGeoRadiusArgs().includeDistance().limit(2).sortAscending();
+        System.out.println(geoOperations.radius(citys, within, args));
+
+    }
+
+    @Test
+    public void testHyperLogLog(){
+        String key1 = "HyperLogLog1";
+        String key2 = "HyperLogLog2";
+        String desKey = "desHyperLogLog";
+        HyperLogLogOperations operations = redisTemplate.opsForHyperLogLog();
+        //给基数添加元素
+        operations.add(key1, "a", "b", "c");
+        operations.add(key2, "d", "e", "f","g");
+
+        //返回HyperLogLog的基数值
+        Long size = operations.size(key1);
+        System.out.println(key1+"的基数值: " + size);
+
+        size = operations.size(key2);
+        System.out.println(key2+"的基数值: " + size);
+
+        //获取两个基数集合的并集
+        size = operations.union(desKey,key1,key2);
+        System.out.println(desKey+"的基数值: " + size);
+        
     }
 
 }
